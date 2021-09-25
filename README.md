@@ -10,10 +10,7 @@ docker build -f hercules/Dockerfile . -t hercules:1
 
 ## turnkey3イメージのビルド
 ```
-docker-compose build
-```
-```
-docker build . -t turnkey:1
+./build.sh
 ```
 
 ## turnkey3でmvsを起動
