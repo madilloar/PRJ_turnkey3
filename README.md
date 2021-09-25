@@ -5,7 +5,7 @@ MVS38j turnkey3 docker project
 ## 事前準備
 herculesコンテナをビルド。
 ```
-docker build -f hercules/Dockerfile .
+docker build -f hercules/Dockerfile . -t hercules:1
 ```
 
 ## turnkey3イメージのビルド
