@@ -24,12 +24,14 @@ docker-compose run turnkey3 ./startmvs
 docker run --rm -it -v mvs38j:/opt/hercules/mvs38j -p 3270:3270 -p 8081:8081 --name c_turnkey_1 turnkey:1 ./startmvs
 ```
 
-## マスターコンソール
+## マスターコンソールを起動
+turnkey3のコンテナイメージには``c3270``エミュレータを同梱しているので、docker runでエミュレータを起動している。
+turnkey3のIPアドレスは``docker network inspect``で調べるて変更する。
 ```
 docker-compose run turnkey3 c3270 -charset us-intl -model 3278-2 -keymap c3270.keymap 172.29.0.2:3270
 ```
-## 一般ユーザ
 
+## 一般ユーザ
 ```
 docker-compose run turnkey3 c3270 -charset us-intl -model 3279-2 -keymap c3270.keymap 172.29.0.2:3270
 ```
