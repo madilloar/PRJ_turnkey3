@@ -1,0 +1,3 @@
+#!/bin/sh
+/opt/hercules/bin/hercules -f /opt/hercules/mvs38j/conf/turnkey_mvs.conf
+
