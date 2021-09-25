@@ -1,5 +1,5 @@
 #!/bin/bash
-MYHOME=~/prj/turnkey3
+MYHOME=~/prj/PRJ_turnkey3
 TK3="turnkey-mvs-3"
 CDROM="${MYHOME}/cdrom"
 
@@ -11,7 +11,7 @@ if [ ! -e ${TK3}.zip ] ; then
 fi
 
 mkdir -p ${CDROM}
-read -sp "Please sudo password:" PASSWORD
+read -sp "Please sudo password: " PASSWORD
 tty -s && echo
 echo ${PASSWORD} | sudo -S mount -r ${TK3}.iso ${CDROM}
 
