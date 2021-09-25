@@ -1,7 +1,7 @@
 # PRJ_turnkey3
 MVS38j turnkey3 docker project
 
-## 事前準備
+## build.sh
 isoイメージをコンテナビルド時にCOPYしても、mountができないので、あらかじめホストOSでmountしておいて、ディレクトリをごっそりCOPYする。
 ```
 #!/bin/bash
