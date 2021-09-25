@@ -1,118 +1,11 @@
 # PRJ_turnkey3
+
 MVS38j turnkey3 docker project
 
-## build.sh
-isoイメージをコンテナビルド時にCOPYしても、mountができないので、あらかじめホストOSでmountしておいて、ディレクトリをごっそりCOPYする。
+## 事前準備
+herculesコンテナをビルド。
 ```
-#!/bin/bash
-MYHOME=~/prj/turnkey3
-TK3="turnkey-mvs-3"
-CDROM="${MYHOME}/cdrom"
-
-cd ${MYHOME}
-
-if [ ! -e ${TK3}.zip ] ; then
-  wget http://www.ibiblio.org/jmaynard/${TK3}.zip
-  unzip ${TK3}.zip
-fi
-
-mkdir -p ${CDROM}
-read -sp "Please sudo password:" PASSWORD
-tty -s && echo
-echo ${PASSWORD} | sudo -S mount -r ${TK3}.iso ${CDROM}
-
-cp -r ${CDROM} ./src
-echo ${PASSWORD} | sudo -S umount ${CDROM}
-rm -rf ${CDROM}
-
-chmod -R u+w ${MYHOME}/src/cdrom
-rm -rf ${MYHOME}/src/media
-mv ${MYHOME}/src/cdrom/ ${MYHOME}/src/media/
-
-docker-compose build
-```
-
-## Dockerfile
-コンテナを実行するたびにturnkey3のデータセットの状態が初期状態になるのは困るので、Dockerfileでは/opt/hercules/mvs38jにデータセットやその他の定義ファイルをコピーしない。
-```
-vi ~/prj/turnkey3/Dockerfile
-```
-```
-FROM hercules:1
-WORKDIR /opt/hercules/mvs38j
-COPY src /tmp/src
-RUN mkdir -p /opt/hercules/mvs38j && \
-  cp -p /tmp/src/docker_entrypoint.sh /opt/hercules/mvs38j && \
-  cp -p /tmp/src/startmvs /tmp/src/media/conf/_startmvs && \
-  cp -p /tmp/src/c3270.keymap /opt/hercules/mvs38j
-
-ENTRYPOINT  ["./docker_entrypoint.sh"]
-```
-
-## docker_entrypoint.sh
-コンテナ実行時にVOLUMEが接続されるので、このエントリポイントshellでデータセットやconfファイルのセットアップをしている。
-
-if文を入れいているのは、confファイルが存在しない場合、つまり一度もセットアップしていない場合は、セットアップし、そうでない場合は何もしないため。
-```
-vi ~/prj/turnkey3/src/docker_entrypoint.sh
-```
-```
-#!/bin/sh
-FILE="/opt/hercules/mvs38j/conf/turnkey_mvs.conf"
-
-if [ ! -e ${FILE} ]; then
-  cd /tmp/src/media && \
-  echo -e "\n1\n/opt/hercules/mvs38j\n3\nY\nY\nY\nY\n3270\n3505\n8081\n2\nY\n\n1\n1\n32\nY\n\nSECRET\n\n\n" | ./setup && \
-  cd /opt/hercules/mvs38j
-fi
-exec "$@"
-```
-```
-chmod u+x ~/prj/turnkey3/src/docker_entrypoint.sh
-```
-
-## startmvs
-mvs38jの起動スクリプト。
-```
-vi ~/prj/turnkey3/src/startmvs
-```
-```
-#!/bin/sh
-/opt/hercules/bin/hercules -f /opt/hercules/mvs38j/conf/turnkey_mvs.conf
-```
-```
-chmod u+x ~/prj/turnkey3/src/startmvs
-```
-
-## c3270.keymap
-
-```~/prj/turnkey3/src/c3270.keymap
-<Key>PPAGE: PA(2)
-<Key>NPAGE: PA(1)
-<Key>FIND: Home
-<Key>SELECT: EraseEOF
-```
-
-## docker-compose.yml
-```
-vi ~/prj/turnkey3/docker-compose.yml
-```
-```
-version: '3.7'
-
-services:
-  turnkey3:
-    build: .
-    volumes:
-      - mvs38j:/opt/hercules/mvs38j
-    environment:
-      - TZ=Japan/Tokyo
-    ports:
-      - 8081:8081
-      - 3270:3270
-
-volumes:
-  mvs38j:
+docker build -f hercules/Dockerfile .
 ```
 
 ## turnkey3イメージのビルド
@@ -203,13 +96,33 @@ docker-compose run turnkey3 sh
 docker run --rm -it turnkey:1 sh
 ```
 
-# herculesエミュレータ起動時のワーニングについて
+## herculesエミュレータ起動時のワーニングについて
 https://hercdoc.glanzmann.org/V311/HerculesMessagesandCodes.pdf
 ```
 HHCTT001W Timer thread set priority -20 failed: Permission denied
 ```
-hercules.cnfの69行目のTODPRIOが-20となってるのを変更すれば変わる。
+confファイルのTODPRIOが-20となってるのを変更すれば変わる。
 ```
   TODPRIO     1                 # TOD Clock and timer thread are Time Critical
 ```
 
+## コンテナビルドで嵌ったこと
+課題:isoイメージをコンテナビルド時に``COPY``しても、``mount``ができない(``mount``には``root``権限が必要)。
+対応:あらかじめホストOS側で``mount``しておいて、ディレクトリをごっそり``COPY``するように``Dockerfile``を作る。
+
+課題:コンテナビルド時にturnkey3を``setup``してしまうと、コンテナイメージの中にmvs38jのデータセットが展開されてしまうため。コンテナ起動の都度データセットが初期化されてしまう。
+対応:``Dockerfile``では``/tmp``以下にisoイメージをコピーするまでとして、``docker_entrypoint.sh``でturnkey3を``setup``する。
+
+課題:単純に``docker_entrypoint.sh``でturnkey3を``setup``してしまうと、コンテナ起動の都度``setup``してしまう。
+対応:setupが成功すると、``/opt/hercules/mvs38j/conf/turnkey_mvs.conf``ファイルができるので、このファイルが存在していたら、``setup``しないようにする。こんな感じ。
+```
+#!/bin/sh
+FILE="/opt/hercules/mvs38j/conf/turnkey_mvs.conf"
+
+if [ ! -e ${FILE} ]; then
+  cd /tmp/src/media && \
+  echo -e "\n1\n/opt/hercules/mvs38j\n3\nY\nY\nY\nY\n3270\n3505\n8081\n2\nY\n\n1\n1\n32\nY\n\nSECRET\n\n\n" | ./setup && \
+  cd /opt/hercules/mvs38j
+fi
+exec "$@"
+```
