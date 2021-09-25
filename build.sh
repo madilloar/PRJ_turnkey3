@@ -11,10 +11,11 @@ if [ ! -e ${TK3}.zip ] ; then
 fi
 
 mkdir -p ${CDROM}
-read -sp "Please sudo password: " PASSWORD
+read -sp "Input sudo password: " PASSWORD
 tty -s && echo
 echo ${PASSWORD} | sudo -S mount -r ${TK3}.iso ${CDROM}
 
+echo "Please wait about 5 min..."
 cp -r ${CDROM} ./src
 echo ${PASSWORD} | sudo -S umount ${CDROM}
 rm -rf ${CDROM}
